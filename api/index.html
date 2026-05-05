@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OtoRisk - İlan Risk Kontrolü</title>
+    <meta
+      name="description"
+      content="Araç ilanını yapıştır, fiyat ve risk sinyallerini 30 saniyede kontrol et."
+    >
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="OtoRisk ana sayfa">
+          <span class="brand-mark" aria-hidden="true">OR</span>
+          <span>
+            <strong>OtoRisk</strong>
+            <small>Kapora göndermeden önce kontrol et.</small>
+          </span>
+        </a>
+        <nav class="top-actions" aria-label="Sayfa işlemleri">
+          <button class="icon-button" id="sampleButton" type="button" title="Örnek ilan doldur">
+            <span aria-hidden="true">+</span>
+            <span>Örnek</span>
+          </button>
+          <button class="icon-button secondary" id="resetButton" type="button" title="Formu temizle">
+            <span aria-hidden="true">×</span>
+            <span>Temizle</span>
+          </button>
+        </nav>
+      </header>
+
+      <section class="workspace">
+        <form class="input-panel" id="riskForm">
+          <div class="section-title">
+            <span>İlan Bilgileri</span>
+            <small>Link yerine açıklama metnini yapıştırmak yeterli.</small>
+          </div>
+
+          <label class="field field-full">
+            <span>İlan metni</span>
+            <textarea
+              id="listingText"
+              rows="8"
+              placeholder="İlan açıklamasını buraya yapıştır. Örnek: Değişensiz, tramer 12.000 TL, 180.000 km, bakımları yeni..."
+            ></textarea>
+          </label>
+
+          <div class="field-grid">
+            <label class="field">
+              <span>Marka</span>
+              <select id="brand">
+                <option value="">Marka seç</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Model</span>
+              <select id="model" disabled>
+                <option value="">Önce marka seç</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Versiyon / motor</span>
+              <select id="variant" disabled>
+                <option value="">Önce model seç</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Yıl</span>
+              <select id="year">
+                <option value="">Yıl seç</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Kilometre</span>
+              <input id="km" type="text" inputmode="numeric" placeholder="145.000">
+            </label>
+            <label class="field">
+              <span>İlan fiyatı</span>
+              <input id="price" type="text" inputmode="numeric" placeholder="950.000">
+            </label>
+            <label class="field">
+              <span>Şehir</span>
+              <select id="city">
+                <option value="">Şehir seç</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Satıcı</span>
+              <select id="sellerType">
+                <option value="">Seç</option>
+                <option value="owner">Sahibinden</option>
+                <option value="dealer">Galeri</option>
+                <option value="unknown">Belirsiz</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="field-grid compact">
+            <label class="field">
+              <span>Hasar kaydı</span>
+              <input id="damageAmount" type="text" inputmode="numeric" placeholder="0 veya 120.000">
+            </label>
+            <label class="field">
+              <span>Boyalı parça</span>
+              <input id="paintedPanels" type="number" min="0" max="20" placeholder="2">
+            </label>
+            <label class="field">
+              <span>Değişen parça</span>
+              <input id="changedPanels" type="number" min="0" max="20" placeholder="0">
+            </label>
+          </div>
+
+          <div class="controls">
+            <button class="primary-button" type="submit">Raporu Oluştur</button>
+            <p>İlk hedef fiyat tahmini değil; ilandaki çelişki, riskli ifade ve pazarlık sinyalini yakalamak.</p>
+          </div>
+        </form>
+
+        <aside class="result-panel" aria-live="polite">
+          <div class="result-header">
+            <div>
+              <span class="eyebrow">Risk Raporu</span>
+              <h1 id="reportTitle">İlanı analiz etmeye hazır.</h1>
+            </div>
+            <img src="assets/inspection-car.svg" alt="" class="vehicle-visual">
+          </div>
+
+          <div class="score-band" id="scoreBand">
+            <div class="gauge" id="riskGauge" aria-label="Risk göstergesi">
+              <div class="gauge-arc"></div>
+              <div class="gauge-needle" id="riskNeedle"></div>
+              <div class="gauge-hub"></div>
+              <div class="gauge-value">
+                <span id="riskScore">--</span>
+                <small>risk</small>
+              </div>
+              <div class="gauge-scale" aria-hidden="true">
+                <span>0</span>
+                <span>50</span>
+                <span>100</span>
+              </div>
+            </div>
+            <div>
+              <strong id="riskLabel">Ön kontrol bekleniyor</strong>
+              <p id="riskSummary">İlanı ve temel araç bilgilerini girince fiyat, kilometre ve açıklama sinyallerini birlikte okur.</p>
+            </div>
+          </div>
+
+          <div class="metrics" id="metrics">
+            <div>
+              <span>Piyasa sinyali</span>
+              <strong id="priceVerdict">--</strong>
+            </div>
+            <div>
+              <span>KM / yıl</span>
+              <strong id="kmVerdict">--</strong>
+            </div>
+            <div>
+              <span>İlan dili</span>
+              <strong id="textVerdict">--</strong>
+            </div>
+            <div>
+              <span>Çelişki</span>
+              <strong id="contradictionVerdict">--</strong>
+            </div>
+          </div>
+
+          <div class="report-block">
+            <h2>Emsal özeti</h2>
+            <p id="sourceText">Henüz analiz yok. Araştırma API'si bağlanınca emsal fiyatlar km, hasar, boya ve değişen sinyaliyle birlikte yorumlanır.</p>
+            <ul id="sourceList" class="source-list">
+              <li>Emsal özeti analizden sonra görünür.</li>
+            </ul>
+          </div>
+
+          <div class="report-block">
+            <h2>Öne çıkan riskler</h2>
+            <ul id="riskList">
+              <li>Henüz analiz yok.</li>
+            </ul>
+          </div>
+
+          <div class="report-block">
+            <h2>Pazarlık hamlesi</h2>
+            <ul id="negotiationList">
+              <li>İlan bilgilerini girince pazarlık stratejisi oluşur.</li>
+            </ul>
+          </div>
+
+          <div class="report-block">
+            <h2>Satıcıya sorulacak sorular</h2>
+            <ul id="questionList">
+              <li>İlan bilgilerini girince liste oluşur.</li>
+            </ul>
+          </div>
+
+          <div class="report-block">
+            <h2>Son karar</h2>
+            <p id="decisionText">Kapora göndermeden önce risk raporu oluştur.</p>
+          </div>
+
+          <div class="ad-slot" aria-label="Reklam alanı">
+            <span>Reklam alanı</span>
+            <small>AdSense onayından sonra otomatik reklam yerleşimi.</small>
+          </div>
+
+          <div class="result-actions">
+            <button class="icon-button" id="copyReportButton" type="button" disabled>
+              <span aria-hidden="true">□</span>
+              <span>Raporu Kopyala</span>
+            </button>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

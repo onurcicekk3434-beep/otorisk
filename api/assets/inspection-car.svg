@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" aria-labelledby="title desc">
+  <title id="title">Araç kontrol illüstrasyonu</title>
+  <desc id="desc">Kontrol çizgileriyle gösterilen sade bir otomobil.</desc>
+  <defs>
+    <linearGradient id="body" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#c9dfd2"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="220" rx="18" fill="rgba(255,255,255,0.08)"/>
+  <path d="M58 128h18l30-48c7-12 19-19 33-19h77c15 0 28 7 36 19l31 48h18c16 0 29 13 29 29v17H30v-17c0-16 12-29 28-29Z" fill="url(#body)" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M124 78h89c10 0 18 4 24 12l23 36H91l23-36c3-5 6-9 10-12Z" fill="#213a2d" opacity=".86" stroke="#fff" stroke-width="4"/>
+  <circle cx="94" cy="174" r="28" fill="#172f23" stroke="#fff" stroke-width="7"/>
+  <circle cx="266" cy="174" r="28" fill="#172f23" stroke="#fff" stroke-width="7"/>
+  <circle cx="94" cy="174" r="9" fill="#c9dfd2"/>
+  <circle cx="266" cy="174" r="9" fill="#c9dfd2"/>
+  <path d="M46 51h66M50 72h35M256 39h61M276 62h43M166 28v36M147 47h38" stroke="#d9ecdf" stroke-width="6" stroke-linecap="round"/>
+  <path d="M305 91c8 6 14 14 17 24M327 80c11 10 19 22 23 37" stroke="#f4d19a" stroke-width="5" stroke-linecap="round"/>
+</svg>
