@@ -707,7 +707,16 @@ async function enrichWithResearch(data, report) {
     });
 
     if (!response.ok) {
-      throw new Error(`Research unavailable: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      output.priceVerdict.textContent = "Detay scraper gerekli";
+      output.riskSummary.textContent = "Fiyat karşılaştırması için emsal ilanların detay sayfası okunmalı. Arama sonucu kırıntıları artık emsal kabul edilmiyor.";
+      output.sourceText.textContent = errorData.message || "Detaylı emsal karşılaştırma modülü bağlı değil.";
+      addListItems(output.sourceList, [
+        "Güvenilir karşılaştırma için Apify/Playwright scraper bağlanmalı.",
+        "Scraper; emsal ilanın fiyat, km, açıklama, hasar/tramer, boya ve değişen bilgisini okumalı.",
+        "Bu modül bağlanmadan sistem pahalı/ucuz hükmü vermez."
+      ]);
+      return;
     }
 
     const research = await response.json();
