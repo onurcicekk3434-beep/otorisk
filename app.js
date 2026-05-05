@@ -698,7 +698,11 @@ async function enrichWithResearch(data, report) {
         variant: data.variant,
         year: data.year,
         km: data.km,
-        city: data.city
+        price: data.price,
+        city: data.city,
+        damageAmount: data.damageAmount,
+        paintedPanels: data.paintedPanels,
+        changedPanels: data.changedPanels
       })
     });
 
@@ -720,11 +724,17 @@ function applyResearch(data, report, research) {
   const lowPrice = Number(summary.low || 0);
   const highPrice = Number(summary.high || 0);
   const sourceCount = Number(summary.count || 0);
+  const rawCount = Number(summary.rawCount || 0);
+  const detailedCount = Number(summary.detailedCount || 0);
 
   if (!medianPrice || sourceCount < 2) {
-    output.sourceText.textContent = "Emsal fiyat için yeterli ilan fiyatı bulunamadı. Bu durumda sistem fiyat uydurmaz; risk raporu ilan metni ve araç bilgileriyle sınırlı kalır.";
-    const weakItems = (research.prices || []).slice(0, 4).map((item) => `${formatMoney(item.price)} - ${item.title || item.source || "Kaynak"}`);
-    addListItems(output.sourceList, weakItems.length ? weakItems : (research.sources || []).slice(0, 4).map((source) => source.title || source.url || "Kaynak"));
+    output.priceVerdict.textContent = "Kondisyon verisi yetersiz";
+    output.riskSummary.textContent = "Aynı motor için bazı fiyat sinyalleri bulunsa bile km, hasar, boya veya değişen bilgisi yeterince okunamadı.";
+    output.sourceText.textContent = `Fiyat uydurulmadı. Ham fiyat sinyali: ${rawCount}. Kondisyonu okunabilen yakın emsal: ${detailedCount}. ${summary.reason || ""}`;
+    const weakItems = (research.comparables || research.prices || [])
+      .slice(0, 5)
+      .map((item, index) => describeComparable(item, index));
+    addListItems(output.sourceList, weakItems.length ? weakItems : ["Emsal detayları okunamadı."]);
     return;
   }
 
@@ -752,15 +762,16 @@ function applyResearch(data, report, research) {
   output.riskLabel.textContent = riskLabel(researchedScore);
   output.priceVerdict.textContent = verdict;
   output.riskSummary.textContent = `Emsal fiyat bandı: ${formatMoney(lowPrice)} - ${formatMoney(highPrice)}. Medyan: ${formatMoney(medianPrice)}. Bu ilan medyana göre yaklaşık %${diffLabel} ${diff >= 0 ? "yüksek" : "düşük"}.`;
-  output.sourceText.textContent = `Canlı emsal fiyat karşılaştırması kullanıldı. Bulunan fiyat sinyali: ${sourceCount}. Güven: ${summary.confidence === "medium" ? "orta" : "düşük"}. Sorgu: ${research.query}`;
+  output.sourceText.textContent = `Fiyat karşılaştırması yalnızca aynı motor/versiyon ve okunabilir km-kondisyon sinyali olan emsallerle yapıldı. Kullanılan emsal: ${sourceCount}. Güven: ${confidenceLabel(summary.confidence)}.`;
 
   resultPanel.classList.remove("risk-low", "risk-mid", "risk-high");
   resultPanel.classList.add(researchedScore >= 70 ? "risk-high" : researchedScore >= 40 ? "risk-mid" : "risk-low");
 
-  const sourceItems = (research.prices || [])
+  const sourceItems = (research.comparables || research.prices || [])
+    .filter((item) => item.detailScore >= 2 && item.conditionMatch)
     .slice(0, 6)
-    .map((item) => `${formatMoney(item.price)} - ${item.title || "Kaynak"} - ${item.source || ""}`);
-  addListItems(output.sourceList, sourceItems.length ? sourceItems : ["Kaynak başlığı bulunamadı."]);
+    .map((item, index) => describeComparable(item, index));
+  addListItems(output.sourceList, sourceItems.length ? sourceItems : ["Kondisyonu okunabilen emsal detayı bulunamadı."]);
 
   const priceTip = diff > 0.07
     ? `Emsal medyan ${formatMoney(medianPrice)} görünüyor; satıcıya bu bandı gösterip fiyatı gerekçeli pazarlığa aç.`
@@ -768,6 +779,23 @@ function applyResearch(data, report, research) {
       ? `Fiyat emsale göre ucuz görünüyor; ucuzluğun sebebini hasar, değişen, km ve resmi sorguyla kanıtlamadan kapora gönderme.`
       : "Fiyat emsal bandına yakın; pazarlığı daha çok ekspertiz kusurları ve bakım masrafı üzerinden kur.";
   addListItems(output.negotiationList, [priceTip, ...report.negotiation].slice(0, 5));
+}
+
+function describeComparable(item, index) {
+  const parts = [`Emsal ${index + 1}: ${formatMoney(item.price)}`];
+  parts.push(item.km ? `${Number(item.km).toLocaleString("tr-TR")} km` : "km okunamadı");
+  parts.push(item.damageAmount ? `hasar ${formatMoney(item.damageAmount)}` : item.cleanClaim ? "temiz iddiası var" : "hasar bilgisi yok");
+  parts.push(item.paintedPanels ? `${item.paintedPanels} boyalı` : "boya bilgisi yok");
+  parts.push(item.changedPanels ? `${item.changedPanels} değişen` : "değişen bilgisi yok");
+  if (item.categoryPage) parts.push("kategori sayfası, fiyat hesabına alınmadı");
+  parts.push(item.conditionMatch ? "kondisyon yakın" : `kondisyon farklı${item.notes?.length ? `: ${item.notes.join(", ")}` : ""}`);
+  return parts.join(" | ");
+}
+
+function confidenceLabel(confidence) {
+  if (confidence === "medium") return "orta";
+  if (confidence === "insufficient") return "yetersiz";
+  return "düşük";
 }
 
 function updateGauge(score) {
