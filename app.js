@@ -530,8 +530,8 @@ function damageAmountIsHigh(amount, ratio) {
 function evaluatePrice(price, comparables) {
   if (!price || comparables.length === 0) {
     return {
-      verdict: "Canlı araştırma bekleniyor",
-      detail: "Fiyat yorumu, yayın sürümünde arama API'sinden gelen web kaynaklarıyla güncellenir.",
+      verdict: "Fiyat hükmü yok",
+      detail: "Ücretli scraper kapatıldı. Bu sürüm fiyatı webden çekmez; ilan metni, km, hasar, boya, değişen ve çelişki sinyallerini yorumlar.",
       riskDelta: 0,
       note: ""
     };
@@ -613,7 +613,7 @@ function decisionText(score, priceVerdict) {
 }
 
 function sourceText(data) {
-  return "Bu sürüm önce ilan metnindeki çelişki, manipülasyon ve ekspertiz risklerini okur. Yayın sürümünde /api/research endpoint'i emsal ilan fiyatlarını arayıp kaynaklı piyasa bandı çıkarır.";
+  return "Canlı emsal scraper kapatıldı; bu ekranda para yazacak API çağrısı yapılmaz. Rapor, yalnızca girdiğin ilan metni ve araç bilgileriyle risk/çelişki analizi yapar.";
 }
 
 function renderReport(data, report) {
@@ -634,7 +634,11 @@ function renderReport(data, report) {
   output.contradictionVerdict.textContent = report.contradictionVerdict;
   output.decisionText.textContent = report.decision;
   output.sourceText.textContent = sourceText(data);
-  addListItems(output.sourceList, ["Yayın sürümünde bulunan emsal ilan fiyatları burada listelenir."]);
+  addListItems(output.sourceList, [
+    "Para yazmaması için Apify/Tavily/canlı scraper çağrısı kapatıldı.",
+    "Bu haliyle site ücretsiz çalışır ve fiyatı pahalı/ucuz diye uydurmaz.",
+    "Fiyat kontrolü için şimdilik aynı motor, yıl, km ve kondisyon ilanları manuel kıyaslanmalı."
+  ]);
 
   resultPanel.classList.remove("risk-low", "risk-mid", "risk-high");
   resultPanel.classList.add(report.score >= 70 ? "risk-high" : report.score >= 40 ? "risk-mid" : "risk-low");
@@ -676,7 +680,6 @@ form.addEventListener("submit", (event) => {
   const data = collectInput();
   const report = analyze(data);
   renderReport(data, report);
-  enrichWithResearch(data, report);
 });
 
 async function enrichWithResearch(data, report) {

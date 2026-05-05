@@ -4,6 +4,13 @@ export default async function handler(request, response) {
     return;
   }
 
+  response.status(501).json({
+    error: "Paid research disabled",
+    mode: "free_mode",
+    message: "Canlı emsal araştırması ücret çıkarmaması için kapalı. Bu sürüm sadece kullanıcı girdisiyle risk analizi yapar."
+  });
+  return;
+
   const apiKey = process.env.TAVILY_API_KEY;
   const apifyToken = process.env.APIFY_TOKEN;
   const apifyActorId = process.env.APIFY_ACTOR_ID;
@@ -131,7 +138,12 @@ async function runDetailedScraper({ request, response, apifyToken, apifyActorId 
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       startUrls: [searchUrl],
-      maxItems: 12,
+      limit: 10,
+      proxyConfiguration: {
+        useApifyProxy: true,
+        apifyProxyGroups: ["RESIDENTIAL"],
+        apifyProxyCountry: "TR"
+      },
       query,
       brand: target.brand,
       model: target.model,
