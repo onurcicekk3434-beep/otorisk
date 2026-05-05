@@ -5,6 +5,13 @@ export default async function handler(request, response) {
   }
 
   const apiKey = process.env.TAVILY_API_KEY;
+  const apifyToken = process.env.APIFY_TOKEN;
+  const apifyActorId = process.env.APIFY_ACTOR_ID;
+
+  if (apifyToken && apifyActorId) {
+    await runDetailedScraper({ request, response, apifyToken, apifyActorId });
+    return;
+  }
   if (!apiKey) {
     response.status(501).json({
       error: "Research API is not configured",
@@ -12,6 +19,13 @@ export default async function handler(request, response) {
     });
     return;
   }
+
+  response.status(501).json({
+    error: "Detailed scraper is not configured",
+    mode: "search_snippet_disabled",
+    message: "Güvenilir fiyat karşılaştırması için ilan detay sayfalarını okuyan Apify/Playwright scraper gerekir. Arama sonucu snippet fiyatları emsal kabul edilmiyor."
+  });
+  return;
 
   const body = typeof request.body === "string" ? JSON.parse(request.body || "{}") : request.body || {};
   const brand = clean(body.brand);
@@ -79,6 +93,111 @@ export default async function handler(request, response) {
     summary,
     comparables: prices.slice(0, 8)
   });
+}
+
+async function runDetailedScraper({ request, response, apifyToken, apifyActorId }) {
+  const body = typeof request.body === "string" ? JSON.parse(request.body || "{}") : request.body || {};
+  const target = {
+    brand: clean(body.brand),
+    model: clean(body.model),
+    variant: clean(body.variant),
+    year: clean(body.year),
+    km: Number(body.km || 0),
+    price: Number(body.price || 0),
+    city: clean(body.city),
+    damageAmount: Number(body.damageAmount || 0),
+    paintedPanels: Number(body.paintedPanels || 0),
+    changedPanels: Number(body.changedPanels || 0)
+  };
+
+  if (!target.brand || !target.model || !target.year) {
+    response.status(400).json({ error: "brand, model and year are required" });
+    return;
+  }
+
+  const query = [
+    target.brand,
+    target.model,
+    target.variant,
+    target.year,
+    target.city,
+    "ikinci el"
+  ].filter(Boolean).join(" ");
+  const searchUrl = `https://www.arabam.com/ikinci-el?searchText=${encodeURIComponent(query)}`;
+
+  const actorUrl = `https://api.apify.com/v2/acts/${encodeURIComponent(apifyActorId)}/run-sync-get-dataset-items?token=${encodeURIComponent(apifyToken)}&timeout=120`;
+  const actorResponse = await fetch(actorUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      startUrls: [searchUrl],
+      maxItems: 12,
+      query,
+      brand: target.brand,
+      model: target.model,
+      variant: target.variant,
+      year: target.year,
+      city: target.city,
+      km: target.km
+    })
+  });
+
+  if (!actorResponse.ok) {
+    const text = await actorResponse.text();
+    response.status(actorResponse.status).json({ error: "Detailed scraper failed", detail: text });
+    return;
+  }
+
+  const items = await actorResponse.json();
+  const comparables = normalizeScraperItems(Array.isArray(items) ? items : [], target);
+  const summary = summarizePrices(comparables, target);
+
+  response.status(200).json({
+    query,
+    prices: comparables,
+    comparables: comparables.slice(0, 8),
+    summary
+  });
+}
+
+function normalizeScraperItems(items, target) {
+  return items
+    .map((item) => {
+      const title = clean(item.title || item.name || item.heading);
+      const description = clean(item.description || item.explanation || item.details || item.fullDescription || item.text);
+      const joinedText = `${title} ${description} ${JSON.stringify(item)}`;
+      const price = numberFromAny(item.price || item.priceText || item.amount) || firstNumber(normalize(joinedText), /(?:tl|try)?\s*(\d{1,3}(?:[.\s]\d{3}){1,3}|\d{6,8})\s*(?:tl|try)?/);
+      if (!price || !isPlausiblePrice(price, target.price)) return null;
+      if (!isRelevantResult(joinedText, target)) return null;
+
+      const details = extractListingDetails(joinedText);
+      details.km = numberFromAny(item.km || item.mileage || item.kilometer || item.kilometre) || details.km;
+      details.damageAmount = numberFromAny(item.damageAmount || item.tramer || item.damageRecord) || details.damageAmount;
+      details.paintedPanels = numberFromAny(item.paintedPanels || item.paintCount) || details.paintedPanels;
+      details.changedPanels = numberFromAny(item.changedPanels || item.changedPartsCount) || details.changedPanels;
+
+      const comparison = compareDetails(details, target);
+      return {
+        price,
+        title,
+        km: details.km,
+        damageAmount: details.damageAmount,
+        paintedPanels: details.paintedPanels,
+        changedPanels: details.changedPanels,
+        cleanClaim: details.cleanClaim,
+        categoryPage: false,
+        detailScore: comparison.detailScore,
+        conditionMatch: comparison.conditionMatch,
+        notes: comparison.notes
+      };
+    })
+    .filter(Boolean);
+}
+
+function numberFromAny(value) {
+  if (typeof value === "number") return value;
+  const match = String(value || "").match(/(\d{1,3}(?:[.\s]\d{3}){1,3}|\d{1,8})/);
+  return match ? Number(match[1].replace(/[^\d]/g, "")) : 0;
 }
 
 function clean(value) {
